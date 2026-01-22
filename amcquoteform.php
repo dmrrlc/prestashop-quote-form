@@ -5,6 +5,9 @@ if (!defined('_PS_VERSION_')) {
 
 class AmcQuoteForm extends Module
 {
+    private const CONFIG_AUTO_INJECT = 'AMC_QUOTE_AUTO_INJECT';
+    private const CONFIG_RECIPIENT_EMAIL = 'AMC_QUOTE_RECIPIENT_EMAIL';
+
     public function __construct()
     {
         $this->name = 'amcquoteform';
@@ -32,9 +35,17 @@ class AmcQuoteForm extends Module
         
         if (Tools::isSubmit('submit' . $this->name)) {
             $autoInject = (bool)Tools::getValue('AMC_QUOTE_AUTO_INJECT');
-            Configuration::updateValue('AMC_QUOTE_AUTO_INJECT', $autoInject);
+            $recipientEmail = trim((string) Tools::getValue('AMC_QUOTE_RECIPIENT_EMAIL'));
+
+            if ($recipientEmail !== '' && !Validate::isEmail($recipientEmail)) {
+                $output .= $this->displayError($this->l('Adresse email destinataire invalide.'));
+            } else {
+                Configuration::updateValue(self::CONFIG_AUTO_INJECT, $autoInject);
+                // vide = fallback sur l'email boutique
+                Configuration::updateValue(self::CONFIG_RECIPIENT_EMAIL, $recipientEmail);
+                $output .= $this->displayConfirmation($this->l('Paramètres sauvegardés'));
+            }
             
-            $output .= $this->displayConfirmation($this->l('Paramètres sauvegardés'));
         }
         
         return $output . $this->displayForm();
@@ -68,6 +79,13 @@ class AmcQuoteForm extends Module
                             ]
                         ],
                     ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->l('Email destinataire'),
+                        'name' => 'AMC_QUOTE_RECIPIENT_EMAIL',
+                        'desc' => $this->l('Adresse qui reçoit les demandes de devis (laisser vide pour utiliser l\'email de la boutique).'),
+                        'required' => false,
+                    ],
                 ],
                 'submit' => [
                     'title' => $this->l('Enregistrer'),
@@ -84,14 +102,16 @@ class AmcQuoteForm extends Module
         $helper->submit_action = 'submit' . $this->name;
         $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
         
-        $helper->fields_value['AMC_QUOTE_AUTO_INJECT'] = Configuration::get('AMC_QUOTE_AUTO_INJECT', true);
+        $helper->fields_value['AMC_QUOTE_AUTO_INJECT'] = Configuration::get(self::CONFIG_AUTO_INJECT, true);
+        $helper->fields_value['AMC_QUOTE_RECIPIENT_EMAIL'] = Configuration::get(self::CONFIG_RECIPIENT_EMAIL, '');
         
         return $helper->generateForm([$fieldsForm]);
     }
 
     public function install()
     {
-        Configuration::updateValue('AMC_QUOTE_AUTO_INJECT', true);
+        Configuration::updateValue(self::CONFIG_AUTO_INJECT, true);
+        Configuration::updateValue(self::CONFIG_RECIPIENT_EMAIL, '');
         
         return parent::install()
             && $this->registerHook('displayFooterProduct')
@@ -104,7 +124,8 @@ class AmcQuoteForm extends Module
 
     public function uninstall()
     {
-        Configuration::deleteByName('AMC_QUOTE_AUTO_INJECT');
+        Configuration::deleteByName(self::CONFIG_AUTO_INJECT);
+        Configuration::deleteByName(self::CONFIG_RECIPIENT_EMAIL);
         
         return parent::uninstall()
             && $this->dropQuoteTable();
@@ -181,7 +202,7 @@ class AmcQuoteForm extends Module
     public function hookDisplayBeforeBodyClosingTag($params)
     {
         // Ne s'exécute que si l'injection auto est activée
-        if (!Configuration::get('AMC_QUOTE_AUTO_INJECT', true)) {
+        if (!Configuration::get(self::CONFIG_AUTO_INJECT, true)) {
             return '';
         }
         
