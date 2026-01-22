@@ -3,17 +3,17 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-class AmcQuoteForm extends Module
+class ProductQuoteForm extends Module
 {
-    private const CONFIG_AUTO_INJECT = 'AMC_QUOTE_AUTO_INJECT';
-    private const CONFIG_RECIPIENT_EMAIL = 'AMC_QUOTE_RECIPIENT_EMAIL';
+    private const CONFIG_AUTO_INJECT = 'PRODUCTQUOTEFORM_AUTO_INJECT';
+    private const CONFIG_RECIPIENT_EMAIL = 'PRODUCTQUOTEFORM_RECIPIENT_EMAIL';
 
     public function __construct()
     {
-        $this->name = 'amcquoteform';
+        $this->name = 'productquoteform';
         $this->tab = 'front_office_features';
         $this->version = '1.0.0';
-        $this->author = 'AMC Pub';
+        $this->author = 'd-side solutions Sàrl';
         $this->need_instance = 1;
         $this->ps_versions_compliancy = [
             'min' => '8.0.0',
@@ -23,8 +23,8 @@ class AmcQuoteForm extends Module
 
         parent::__construct();
 
-        $this->displayName = $this->l('AMC Quote Form');
-        $this->description = $this->l('Ajoute un formulaire de demande de devis sur les pages produits');
+        $this->displayName = $this->l('Product Quote Form');
+        $this->description = $this->l('Adds a quote request form on product pages');
 
         $this->confirmUninstall = $this->l('Êtes-vous sûr de vouloir désinstaller ce module?');
     }
@@ -34,8 +34,8 @@ class AmcQuoteForm extends Module
         $output = '';
         
         if (Tools::isSubmit('submit' . $this->name)) {
-            $autoInject = (bool)Tools::getValue('AMC_QUOTE_AUTO_INJECT');
-            $recipientEmail = trim((string) Tools::getValue('AMC_QUOTE_RECIPIENT_EMAIL'));
+            $autoInject = (bool)Tools::getValue('PRODUCTQUOTEFORM_AUTO_INJECT');
+            $recipientEmail = trim((string) Tools::getValue('PRODUCTQUOTEFORM_RECIPIENT_EMAIL'));
 
             if ($recipientEmail !== '' && !Validate::isEmail($recipientEmail)) {
                 $output .= $this->displayError($this->l('Adresse email destinataire invalide.'));
@@ -63,7 +63,7 @@ class AmcQuoteForm extends Module
                     [
                         'type' => 'switch',
                         'label' => $this->l('Injection automatique'),
-                        'name' => 'AMC_QUOTE_AUTO_INJECT',
+                        'name' => 'PRODUCTQUOTEFORM_AUTO_INJECT',
                         'desc' => $this->l('Active l\'injection automatique du formulaire via JavaScript si les hooks ne fonctionnent pas'),
                         'is_bool' => true,
                         'values' => [
@@ -81,8 +81,8 @@ class AmcQuoteForm extends Module
                     ],
                     [
                         'type' => 'text',
-                        'label' => $this->l('Email destinataire'),
-                        'name' => 'AMC_QUOTE_RECIPIENT_EMAIL',
+                        'label' => $this->l('Recipient email'),
+                        'name' => 'PRODUCTQUOTEFORM_RECIPIENT_EMAIL',
                         'desc' => $this->l('Adresse qui reçoit les demandes de devis (laisser vide pour utiliser l\'email de la boutique).'),
                         'required' => false,
                     ],
@@ -102,8 +102,12 @@ class AmcQuoteForm extends Module
         $helper->submit_action = 'submit' . $this->name;
         $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
         
-        $helper->fields_value['AMC_QUOTE_AUTO_INJECT'] = Configuration::get(self::CONFIG_AUTO_INJECT, true);
-        $helper->fields_value['AMC_QUOTE_RECIPIENT_EMAIL'] = Configuration::get(self::CONFIG_RECIPIENT_EMAIL, '');
+        // Backward compatibility (old keys)
+        $oldAutoInject = (bool) Configuration::get('AMC_QUOTE_AUTO_INJECT', true);
+        $oldRecipient = (string) Configuration::get('AMC_QUOTE_RECIPIENT_EMAIL', '');
+
+        $helper->fields_value['PRODUCTQUOTEFORM_AUTO_INJECT'] = Configuration::get(self::CONFIG_AUTO_INJECT, $oldAutoInject);
+        $helper->fields_value['PRODUCTQUOTEFORM_RECIPIENT_EMAIL'] = Configuration::get(self::CONFIG_RECIPIENT_EMAIL, $oldRecipient);
         
         return $helper->generateForm([$fieldsForm]);
     }
@@ -112,6 +116,16 @@ class AmcQuoteForm extends Module
     {
         Configuration::updateValue(self::CONFIG_AUTO_INJECT, true);
         Configuration::updateValue(self::CONFIG_RECIPIENT_EMAIL, '');
+
+        // Migrate old configuration keys if present
+        $migratedAutoInject = Configuration::get('AMC_QUOTE_AUTO_INJECT', null);
+        if ($migratedAutoInject !== null) {
+            Configuration::updateValue(self::CONFIG_AUTO_INJECT, (bool) $migratedAutoInject);
+        }
+        $migratedRecipient = Configuration::get('AMC_QUOTE_RECIPIENT_EMAIL', null);
+        if ($migratedRecipient !== null) {
+            Configuration::updateValue(self::CONFIG_RECIPIENT_EMAIL, (string) $migratedRecipient);
+        }
         
         return parent::install()
             && $this->registerHook('displayFooterProduct')
@@ -133,7 +147,17 @@ class AmcQuoteForm extends Module
 
     private function createQuoteTable()
     {
-        $sql = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'amc_quote_requests` (
+        // Keep backward compatibility: rename old table to new one if needed
+        $oldTable = _DB_PREFIX_ . 'amc_quote_requests';
+        $newTable = _DB_PREFIX_ . 'product_quote_requests';
+
+        $oldExists = (bool) Db::getInstance()->getValue('SHOW TABLES LIKE "' . pSQL($oldTable) . '"');
+        $newExists = (bool) Db::getInstance()->getValue('SHOW TABLES LIKE "' . pSQL($newTable) . '"');
+        if ($oldExists && !$newExists) {
+            Db::getInstance()->execute('RENAME TABLE `' . bqSQL($oldTable) . '` TO `' . bqSQL($newTable) . '`');
+        }
+
+        $sql = 'CREATE TABLE IF NOT EXISTS `' . bqSQL($newTable) . '` (
             `id_quote` int(11) NOT NULL AUTO_INCREMENT,
             `id_product` int(11) NOT NULL,
             `product_name` varchar(255) NOT NULL,
@@ -154,7 +178,7 @@ class AmcQuoteForm extends Module
 
     private function dropQuoteTable()
     {
-        $sql = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'amc_quote_requests`';
+        $sql = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'product_quote_requests`';
         return Db::getInstance()->execute($sql);
     }
 
@@ -162,13 +186,13 @@ class AmcQuoteForm extends Module
     {
         // Ajouter CSS et JS personnalisés
         $this->context->controller->registerStylesheet(
-            'amc-quote-form-css',
+            'product-quote-form-css',
             'modules/' . $this->name . '/views/css/front.css',
             ['media' => 'all', 'priority' => 200]
         );
         
         $this->context->controller->registerJavascript(
-            'amc-quote-form-js',
+            'product-quote-form-js',
             'modules/' . $this->name . '/views/js/front.js',
             ['position' => 'bottom', 'priority' => 200]
         );
