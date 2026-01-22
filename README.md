@@ -1,78 +1,64 @@
-# AMC Quote Form - Module PrestaShop 8.1.15
+# Quote Request Form - PrestaShop Module (8.0+)
 
-## Description
-Module de formulaire de demande de devis pour les pages produits PrestaShop en mode catalogue.
+## Overview
+This module adds a quote request contact form on product pages (typically used when the shop is in catalog mode).
 
-Créé pour AMC Pub - Articles Publicitaires Suisse
-
-## Fonctionnalités
-
-✅ Formulaire de devis sur chaque page produit
-✅ Champs: Nom, Prénom, Entreprise, Email, Téléphone, Quantité, Message
-✅ Validation RGPD obligatoire
-✅ Soumission AJAX sans rechargement
-✅ Emails automatiques (notification + confirmation client)
-✅ Stockage en base de données
-✅ Tracking Google Ads / GA4 intégré
-✅ Design responsive
+## Features
+- Quote request form on product pages
+- Fields: first name, last name, company, email, phone, quantity, message
+- GDPR consent checkbox
+- AJAX submission (no page reload)
+- Automatic emails (shop notification + customer confirmation)
+- Stores requests in the database
+- Optional Google Ads / GA4 tracking hooks in JS (placeholders to configure)
+- Responsive styling
 
 ## Installation
-
-1. Uploader le dossier `amcquoteform` dans `/modules/`
-2. Aller dans Back-Office > Modules > Module Manager
-3. Chercher "AMC Quote Form"
-4. Cliquer sur "Installer"
+1. Upload the folder `amcquoteform` into `/modules/`
+2. In the Back Office: **Modules > Module Manager**
+3. Find the module (search by **technical name** `amcquoteform` if needed)
+4. Click **Install**
 
 ## Configuration
+In the Back Office: **Modules > Module Manager > amcquoteform > Configure**
 
-### 1. Vérifier l'email de réception
-Les demandes sont envoyées à l'email configuré dans :
-**Back-Office > Configurer > Paramètres de la boutique > Contact > Email de contact**
+### Recipient email
+- **Recipient email**: the address that receives quote notifications.
+- Leave it empty to use the shop default email (`PS_SHOP_EMAIL`).
 
-### 2. Configurer le tracking Google Ads
-Éditer `/modules/amcquoteform/views/js/front.js` ligne 40 :
+### Google Ads conversion tracking (optional)
+Edit `/modules/amcquoteform/views/js/front.js` and replace the placeholder:
 ```javascript
-'send_to': 'AW-XXXXXXXXX/XXXXX', // Remplacer par votre ID de conversion
+'send_to': 'AW-XXXXXXXXX/XXXXX'
 ```
 
-### 3. Personnaliser les couleurs
-Éditer `/modules/amcquoteform/views/css/front.css` pour adapter à vos couleurs.
+### Styling
+Edit `/modules/amcquoteform/views/css/front.css` to match your theme colors.
 
-## Gestion des demandes
+## Where the form is displayed (hooks)
+The module tries multiple approaches depending on theme support:
+- `displayProductAdditionalInfo` (recommended placement, usually near the product information block)
+- `displayProductButtons` (fallback for themes using this hook)
+- `displayFooterProduct` (fallback placement)
+- Optional JavaScript injection (if enabled in configuration)
 
-Les demandes sont stockées dans la table `ps_amc_quote_requests`.
+If you need **exact placement** (e.g., right after the short description), you can place a hook call in your theme template where you want it:
+```smarty
+{hook h='displayProductAdditionalInfo'}
+```
 
-Pour consulter les demandes, utilisez phpMyAdmin ou créez une page admin personnalisée.
+## Data storage
+Requests are stored in the table `ps_amc_quote_requests`.
 
-### Structure de la table:
-- id_quote (ID unique)
-- id_product (ID produit PrestaShop)
-- product_name (Nom du produit)
-- nom, prenom, entreprise
-- email, telephone
-- quantite (quantité demandée)
-- message (optionnel)
-- date_add (date de la demande)
-- status (statut : "new" par défaut)
+## Uninstall
+Uninstalling the module removes:
+- The module hooks
+- The database table
 
-## Désinstallation
-
-La désinstallation supprime automatiquement :
-- Le module
-- La table de base de données
-- Tous les hooks
-
-⚠️ Les demandes en base seront perdues. Exportez-les avant si nécessaire.
-
-## Support
-
-Développé par d-side solutions Sàrl
-Contact: info@amc-pub.ch
+Warning: stored requests will be lost. Export them first if needed.
 
 ## Version
+1.0.0 (January 2026)
 
-1.0.0 - Janvier 2026
-
-## Compatibilité
-
-PrestaShop 8.0.0 à 8.1.15+
+## Compatibility
+PrestaShop 8.0.0 to 8.1.x+
