@@ -1,0 +1,12 @@
+Bonjour {prenom},
+
+Merci pour votre demande de devis.
+
+Nous avons bien reçu votre demande concernant :
+{product_name}
+
+Notre équipe reviendra vers vous dans les meilleurs délais avec une offre personnalisée.
+
+Cordialement,
+L'équipe
+

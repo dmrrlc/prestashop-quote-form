@@ -2,9 +2,9 @@
     <div class="quote-form-header">
         <h3 class="quote-form-title">
             <i class="material-icons">mail_outline</i>
-            Demander un Devis Gratuit
+            Demander un devis gratuit
         </h3>
-        <p class="quote-form-subtitle">Réponse sous 24h garantie</p>
+        <p class="quote-form-subtitle">Réponse sous 24h</p>
     </div>
 
     <form id="amc-quote-form" class="amc-quote-form" method="post">
@@ -90,15 +90,17 @@
         </div>
 
         <div class="form-group form-gdpr">
-            <div class="custom-control custom-checkbox">
-                <input type="checkbox" 
-                       class="custom-control-input" 
-                       id="quote_gdpr" 
-                       name="gdpr_consent" 
-                       required>
-                <label class="custom-control-label" for="quote_gdpr">
-                    J'accepte que mes données soient utilisées pour me recontacter 
-                    (<a href="{$urls.pages.privacy}" target="_blank">politique de confidentialité</a>)
+            {* Use a theme-agnostic checkbox markup to avoid "custom-control" CSS issues in some themes *}
+            <div class="form-check">
+                <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="quote_gdpr"
+                    name="gdpr_consent"
+                    required>
+                <label class="form-check-label" for="quote_gdpr">
+                    J'accepte que mes données soient utilisées pour me recontacter
+                    (<a href="{$urls.pages.privacy}" target="_blank" rel="noopener noreferrer">politique de confidentialité</a>)
                     <span class="required">*</span>
                 </label>
             </div>

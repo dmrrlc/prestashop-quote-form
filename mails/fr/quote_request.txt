@@ -1,0 +1,19 @@
+Bonjour,
+
+Nouvelle demande de devis pour le produit :
+{product_name}
+
+Lien vers le produit :
+{product_link}
+
+--- Coordonnées du client ---
+Prénom : {prenom}
+Nom : {nom}
+Entreprise : {entreprise}
+Email : {email}
+Téléphone : {telephone}
+Quantité souhaitée : {quantite}
+
+--- Message ---
+{message}
+

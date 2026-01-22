@@ -1,0 +1,10 @@
+Hello {prenom},
+
+We received your quote request for:
+{product_name}
+
+We will get back to you as soon as possible.
+
+Best regards,
+The team
+

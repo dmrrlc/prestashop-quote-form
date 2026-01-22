@@ -8,6 +8,17 @@ class ProductQuoteForm extends Module
     private const CONFIG_AUTO_INJECT = 'PRODUCTQUOTEFORM_AUTO_INJECT';
     private const CONFIG_RECIPIENT_EMAIL = 'PRODUCTQUOTEFORM_RECIPIENT_EMAIL';
 
+    private function tableExists(string $tableName): bool
+    {
+        // Use information_schema instead of SHOW TABLES because some MariaDB setups
+        // (and/or PrestaShop Db::getValue() wrappers) can produce invalid SQL with LIMIT.
+        $sql = 'SELECT COUNT(*) FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                  AND table_name = "' . pSQL($tableName) . '"';
+
+        return (int) Db::getInstance()->getValue($sql) > 0;
+    }
+
     public function __construct()
     {
         $this->name = 'productquoteform';
@@ -151,8 +162,8 @@ class ProductQuoteForm extends Module
         $oldTable = _DB_PREFIX_ . 'amc_quote_requests';
         $newTable = _DB_PREFIX_ . 'product_quote_requests';
 
-        $oldExists = (bool) Db::getInstance()->getValue('SHOW TABLES LIKE "' . pSQL($oldTable) . '"');
-        $newExists = (bool) Db::getInstance()->getValue('SHOW TABLES LIKE "' . pSQL($newTable) . '"');
+        $oldExists = $this->tableExists($oldTable);
+        $newExists = $this->tableExists($newTable);
         if ($oldExists && !$newExists) {
             Db::getInstance()->execute('RENAME TABLE `' . bqSQL($oldTable) . '` TO `' . bqSQL($newTable) . '`');
         }

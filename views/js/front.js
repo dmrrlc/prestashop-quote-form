@@ -32,9 +32,23 @@ function amcQuoteFormInit(root) {
         // Envoyer via AJAX
         fetch(ajaxUrl, {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
-        .then(response => response.json())
+        .then(async (response) => {
+            // Some failures return HTML (404/500) which would make response.json() throw.
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                throw new Error('Réponse serveur invalide (HTTP ' + response.status + '). Vérifiez que le contrôleur AJAX du module est bien accessible.');
+            }
+            if (!response.ok) {
+                throw new Error(data && data.message ? data.message : ('Erreur HTTP ' + response.status));
+            }
+            return data;
+        })
         .then(data => {
             if (data.success) {
                 // Succès
@@ -69,8 +83,10 @@ function amcQuoteFormInit(root) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            errorMsg.innerHTML = 'Erreur de connexion. Veuillez réessayer ou nous appeler au 026 675 15 75.';
+            console.error('Quote form error:', error);
+            errorMsg.innerHTML = (error && error.message)
+                ? error.message
+                : 'Erreur de connexion. Veuillez réessayer.';
             errorMsg.style.display = 'block';
         })
         .finally(() => {
@@ -132,9 +148,41 @@ function amcQuoteFormInit(root) {
     }
 }
 
+function amcQuoteFormMoveToPreferredLocation() {
+    const wrapper = document.getElementById('amc-quote-form-wrapper') || document.querySelector('.amc-quote-form-wrapper');
+    if (!wrapper) return;
+
+    // Avoid doing the work multiple times.
+    if (wrapper.dataset && wrapper.dataset.amcQuoteMoved === '1') return;
+
+    // Preferred destination for the user's theme:
+    // - after the reassurance block (so the form is at the end of the right column content)
+    // - otherwise, append to the sticky sidebar container if present
+    // - otherwise, fallback to common PrestaShop selectors
+    const reassurance = document.querySelector('#block-reassurance');
+    if (reassurance && reassurance.parentNode) {
+        reassurance.insertAdjacentElement('afterend', wrapper);
+    } else {
+        const sidebar =
+            document.querySelector('.tv-product-page-content .theiaStickySidebar') ||
+            document.querySelector('.tv-product-page-content') ||
+            document.querySelector('.product-actions') ||
+            document.querySelector('.product-information') ||
+            document.querySelector('#add-to-cart-or-refresh');
+
+        if (sidebar) {
+            sidebar.appendChild(wrapper);
+        }
+    }
+
+    if (wrapper.dataset) wrapper.dataset.amcQuoteMoved = '1';
+}
+
 // Exposer l'init pour l'injection auto
 window.amcQuoteFormInit = amcQuoteFormInit;
+window.amcQuoteFormMoveToPreferredLocation = amcQuoteFormMoveToPreferredLocation;
 
 document.addEventListener('DOMContentLoaded', function() {
+    amcQuoteFormMoveToPreferredLocation();
     amcQuoteFormInit(document);
 });

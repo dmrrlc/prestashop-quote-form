@@ -82,6 +82,30 @@
     border: 1px solid #ffeaa7;
 }
 
+.amc-quote-form-wrapper .form-gdpr .form-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.amc-quote-form-wrapper .form-gdpr .form-check-input {
+    margin-top: 4px; /* align checkbox with first line of text */
+    flex: 0 0 auto;
+    cursor: pointer;
+}
+
+.amc-quote-form-wrapper .form-gdpr .form-check-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+    word-break: break-word;
+    cursor: pointer; /* ensures label click feels clickable */
+}
+
+.amc-quote-form-wrapper .form-gdpr .form-check-label a {
+    white-space: normal;
+}
+
 .form-gdpr label {
     font-weight: normal;
     margin-bottom: 0;

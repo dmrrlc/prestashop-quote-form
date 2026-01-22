@@ -7,11 +7,19 @@
         // Vérifier si le formulaire n'est pas déjà présent
         if (document.getElementById('amc-quote-form-wrapper')) {
             console.log('AMC Quote Form: Formulaire déjà présent via hook');
+            // Même si le formulaire est présent via hook, on tente de le repositionner au bon endroit
+            if (window.amcQuoteFormMoveToPreferredLocation) {
+                window.amcQuoteFormMoveToPreferredLocation();
+            }
             return;
         }
         
         // Chercher l'élément cible
         var targetElement =
+            // Thème TV: fin du bloc (juste après le reassurance)
+            document.querySelector('#block-reassurance') ||
+            // Thème TV: conteneur sticky de la colonne droite
+            document.querySelector('.tv-product-page-content .theiaStickySidebar') ||
             // Classique (PS Classic): description courte
             document.querySelector('.product-description-short') ||
             // Fallbacks
@@ -55,5 +63,5 @@
 </script>
 
 <template id="amc-quote-form-template">
-    {include file='module:amcquoteform/views/templates/hook/quote_form.tpl'}
+    {include file='module:productquoteform/views/templates/hook/quote_form.tpl'}
 </template>
