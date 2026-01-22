@@ -172,8 +172,11 @@ class AmcQuoteFormAjaxModuleFrontController extends ModuleFrontController
         </body>
         </html>';
 
-        // Email du magasin (configuré dans PrestaShop)
-        $to = Configuration::get('PS_SHOP_EMAIL');
+        // Email destinataire (config module) sinon email boutique
+        $to = (string) Configuration::get('AMC_QUOTE_RECIPIENT_EMAIL', '');
+        if (!$to) {
+            $to = (string) Configuration::get('PS_SHOP_EMAIL');
+        }
         
         // Utiliser la classe Mail de PrestaShop
         return Mail::Send(
