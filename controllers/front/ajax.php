@@ -4,6 +4,10 @@
 // so that PrestaShop can route /module/productquoteform/ajax correctly.
 class ProductquoteformAjaxModuleFrontController extends ModuleFrontController
 {
+    private function isGdprConsentEnabled(): bool
+    {
+        return (bool) Configuration::get('PRODUCTQUOTEFORM_GDPR_ENABLED', true);
+    }
     private function parseRecipientEmails(string $raw): array
     {
         $raw = trim($raw);
@@ -134,8 +138,8 @@ class ProductquoteformAjaxModuleFrontController extends ModuleFrontController
                 return;
             }
 
-            // Vérifier le consentement RGPD
-            if (!$gdpr_consent) {
+            // Vérifier le consentement RGPD (si activé dans la configuration module)
+            if ($this->isGdprConsentEnabled() && !$gdpr_consent) {
                 $this->ajaxRender(json_encode([
                     'success' => false,
                     'message' => 'Vous devez accepter la politique de confidentialité.'
