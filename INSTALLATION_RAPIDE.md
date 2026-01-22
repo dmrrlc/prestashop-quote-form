@@ -69,3 +69,4 @@ Edit `/modules/amcquoteform/views/js/front.js` and replace:
 - GDPR consent checkbox
 - Server-side validation
 - CSRF token verification
+
