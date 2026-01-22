@@ -95,6 +95,7 @@ class AmcQuoteForm extends Module
         
         return parent::install()
             && $this->registerHook('displayFooterProduct')
+            && $this->registerHook('displayProductAdditionalInfo')
             && $this->registerHook('displayProductButtons')
             && $this->registerHook('displayBeforeBodyClosingTag')
             && $this->registerHook('actionFrontControllerSetMedia')
@@ -155,17 +156,22 @@ class AmcQuoteForm extends Module
     public function hookDisplayFooterProduct($params)
     {
         // Hook qui s'affiche après les informations produit
-        $product = $params['product'];
-        
-        $this->context->smarty->assign([
-            'product_id' => $product['id_product'],
-            'product_name' => $product['name'],
-            'ajax_url' => $this->context->link->getModuleLink($this->name, 'ajax'),
-        ]);
+        $product = $this->getProductFromParamsOrContext($params);
+        if (!$product) {
+            return '';
+        }
+
+        $this->assignTemplateVarsForProduct($product);
 
         return $this->display(__FILE__, 'views/templates/hook/quote_form.tpl');
     }
     
+    public function hookDisplayProductAdditionalInfo($params)
+    {
+        // Hook généralement proche du bloc d'informations produit (souvent sous la description courte)
+        return $this->hookDisplayFooterProduct($params);
+    }
+
     public function hookDisplayProductButtons($params)
     {
         // Alternative hook pour les thèmes qui utilisent displayProductButtons
@@ -181,18 +187,87 @@ class AmcQuoteForm extends Module
         
         // Injection JavaScript pour positionner le formulaire automatiquement
         // si les hooks standards ne fonctionnent pas
-        $product = $this->context->controller->getProduct();
-        
+        if (!isset($this->context->controller->php_self) || $this->context->controller->php_self !== 'product') {
+            return '';
+        }
+
+        $product = $this->getProductFromParamsOrContext([]);
         if (!$product) {
             return '';
         }
         
-        $this->context->smarty->assign([
-            'product_id' => $product->id,
-            'product_name' => $product->name,
-            'ajax_url' => $this->context->link->getModuleLink($this->name, 'ajax'),
-        ]);
+        $this->assignTemplateVarsForProduct($product);
         
         return $this->display(__FILE__, 'views/templates/hook/quote_form_inject.tpl');
+    }
+
+    private function assignTemplateVarsForProduct($product)
+    {
+        $this->context->smarty->assign([
+            'product_id' => $this->extractProductId($product),
+            'product_name' => $this->extractProductName($product),
+            'ajax_url' => $this->context->link->getModuleLink($this->name, 'ajax'),
+            'amc_quote_token' => Tools::getToken(false),
+        ]);
+    }
+
+    private function getProductFromParamsOrContext($params)
+    {
+        if (isset($params['product']) && $params['product']) {
+            return $params['product'];
+        }
+
+        // Sur les pages produit PS 8, le produit est généralement disponible dans les variables Smarty
+        $product = $this->context->smarty->getTemplateVars('product');
+        if ($product) {
+            return $product;
+        }
+
+        return null;
+    }
+
+    private function extractProductId($product)
+    {
+        if (is_array($product)) {
+            if (isset($product['id_product'])) {
+                return (int) $product['id_product'];
+            }
+            if (isset($product['id'])) {
+                return (int) $product['id'];
+            }
+        }
+
+        if (is_object($product)) {
+            if (isset($product->id_product)) {
+                return (int) $product->id_product;
+            }
+            if (isset($product->id)) {
+                return (int) $product->id;
+            }
+        }
+
+        return 0;
+    }
+
+    private function extractProductName($product)
+    {
+        $name = '';
+
+        if (is_array($product) && isset($product['name'])) {
+            $name = $product['name'];
+        } elseif (is_object($product) && isset($product->name)) {
+            $name = $product->name;
+        }
+
+        // Le nom peut être un tableau [id_lang => name]
+        if (is_array($name)) {
+            $langId = (int) $this->context->language->id;
+            if (isset($name[$langId])) {
+                return (string) $name[$langId];
+            }
+            return (string) reset($name);
+        }
+
+        return (string) $name;
     }
 }

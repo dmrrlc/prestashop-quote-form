@@ -15,6 +15,16 @@ class AmcQuoteFormAjaxModuleFrontController extends ModuleFrontController
             return;
         }
 
+        // CSRF token (simple token de session PrestaShop)
+        $token = (string) Tools::getValue('token');
+        if (!$token || $token !== Tools::getToken(false)) {
+            $this->ajaxRender(json_encode([
+                'success' => false,
+                'message' => 'Jeton de sécurité invalide, veuillez recharger la page.'
+            ]));
+            return;
+        }
+
         // Récupérer et valider les données
         $product_id = (int)Tools::getValue('product_id');
         $product_name = pSQL(Tools::getValue('product_name'));

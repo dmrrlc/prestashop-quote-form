@@ -1,13 +1,18 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('amc-quote-form');
-    
+function amcQuoteFormInit(root) {
+    const scope = root || document;
+    const form = scope.getElementById ? scope.getElementById('amc-quote-form') : document.getElementById('amc-quote-form');
+
     if (!form) return;
+    if (form.dataset && form.dataset.amcQuoteBound === '1') return;
+    if (form.dataset) form.dataset.amcQuoteBound = '1';
 
     const submitBtn = form.querySelector('.btn-quote-submit');
     const successMsg = form.querySelector('.quote-success');
     const errorMsg = form.querySelector('.quote-error');
     const wrapper = form.closest('.amc-quote-form-wrapper');
-    const ajaxUrl = wrapper.dataset.ajaxUrl;
+    const ajaxUrl = wrapper && wrapper.dataset ? wrapper.dataset.ajaxUrl : null;
+
+    if (!ajaxUrl) return;
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -125,4 +130,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+}
+
+// Exposer l'init pour l'injection auto
+window.amcQuoteFormInit = amcQuoteFormInit;
+
+document.addEventListener('DOMContentLoaded', function() {
+    amcQuoteFormInit(document);
 });

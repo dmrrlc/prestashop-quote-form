@@ -1,4 +1,4 @@
-<div class="amc-quote-form-wrapper" id="amc-quote-form-wrapper" data-ajax-url="{$ajax_url}">
+<div class="amc-quote-form-wrapper" id="amc-quote-form-wrapper" data-ajax-url="{$ajax_url|escape:'htmlall':'UTF-8'}">
     <div class="quote-form-header">
         <h3 class="quote-form-title">
             <i class="material-icons">mail_outline</i>
@@ -13,8 +13,9 @@
             <div class="alert alert-danger quote-error" style="display:none;"></div>
         </div>
 
-        <input type="hidden" name="product_id" value="{$product_id}">
-        <input type="hidden" name="product_name" value="{$product_name}">
+        <input type="hidden" name="product_id" value="{$product_id|intval}">
+        <input type="hidden" name="product_name" value="{$product_name|escape:'htmlall':'UTF-8'}">
+        <input type="hidden" name="token" value="{$amc_quote_token|escape:'htmlall':'UTF-8'}">
 
         <div class="form-row">
             <div class="form-group col-md-6">
