@@ -8,6 +8,8 @@ class ProductQuoteForm extends Module
     private const CONFIG_AUTO_INJECT = 'PRODUCTQUOTEFORM_AUTO_INJECT';
     private const CONFIG_RECIPIENT_EMAIL = 'PRODUCTQUOTEFORM_RECIPIENT_EMAIL';
     private const CONFIG_RECIPIENT_EMAILS = 'PRODUCTQUOTEFORM_RECIPIENT_EMAILS';
+    private const CONFIG_GDPR_ENABLED = 'PRODUCTQUOTEFORM_GDPR_ENABLED';
+    private const CONFIG_PRIVACY_URL = 'PRODUCTQUOTEFORM_PRIVACY_URL';
 
     private function tableExists(string $tableName): bool
     {
@@ -49,10 +51,17 @@ class ProductQuoteForm extends Module
             $autoInject = (bool)Tools::getValue('PRODUCTQUOTEFORM_AUTO_INJECT');
             $recipientEmail = trim((string) Tools::getValue('PRODUCTQUOTEFORM_RECIPIENT_EMAIL'));
             $recipientEmailsRaw = trim((string) Tools::getValue('PRODUCTQUOTEFORM_RECIPIENT_EMAILS'));
+            $gdprEnabled = (bool) Tools::getValue('PRODUCTQUOTEFORM_GDPR_ENABLED');
+            $privacyUrl = trim((string) Tools::getValue('PRODUCTQUOTEFORM_PRIVACY_URL'));
 
             $recipientEmails = $this->parseRecipientEmails($recipientEmailsRaw);
             if ($recipientEmailsRaw !== '' && empty($recipientEmails)) {
                 $output .= $this->displayError($this->l('Liste d\'emails destinataires invalide. Utilisez des emails séparés par des virgules.'));
+                return $output . $this->displayForm();
+            }
+
+            if ($privacyUrl !== '' && !Validate::isUrl($privacyUrl)) {
+                $output .= $this->displayError($this->l('URL de la politique de confidentialité invalide.'));
                 return $output . $this->displayForm();
             }
 
@@ -63,6 +72,8 @@ class ProductQuoteForm extends Module
                 // vide = fallback sur l'email boutique
                 Configuration::updateValue(self::CONFIG_RECIPIENT_EMAIL, $recipientEmail);
                 Configuration::updateValue(self::CONFIG_RECIPIENT_EMAILS, implode(',', $recipientEmails));
+                Configuration::updateValue(self::CONFIG_GDPR_ENABLED, (bool) $gdprEnabled);
+                Configuration::updateValue(self::CONFIG_PRIVACY_URL, $privacyUrl);
                 $output .= $this->displayConfirmation($this->l('Paramètres sauvegardés'));
             }
             
@@ -115,6 +126,32 @@ class ProductQuoteForm extends Module
                         'rows' => 3,
                         'cols' => 60,
                     ],
+                    [
+                        'type' => 'switch',
+                        'label' => $this->l('Require privacy policy consent'),
+                        'name' => 'PRODUCTQUOTEFORM_GDPR_ENABLED',
+                        'desc' => $this->l('Affiche la case à cocher de consentement (politique de confidentialité) dans le formulaire.'),
+                        'is_bool' => true,
+                        'values' => [
+                            [
+                                'id' => 'gdpr_on',
+                                'value' => 1,
+                                'label' => $this->l('Oui')
+                            ],
+                            [
+                                'id' => 'gdpr_off',
+                                'value' => 0,
+                                'label' => $this->l('Non')
+                            ],
+                        ],
+                    ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->l('Privacy policy URL'),
+                        'name' => 'PRODUCTQUOTEFORM_PRIVACY_URL',
+                        'desc' => $this->l('Optionnel. URL personnalisée de la page "politique de confidentialité". Laisser vide pour utiliser le lien natif du thème.'),
+                        'required' => false,
+                    ],
                 ],
                 'submit' => [
                     'title' => $this->l('Enregistrer'),
@@ -138,6 +175,8 @@ class ProductQuoteForm extends Module
         $helper->fields_value['PRODUCTQUOTEFORM_AUTO_INJECT'] = Configuration::get(self::CONFIG_AUTO_INJECT, $oldAutoInject);
         $helper->fields_value['PRODUCTQUOTEFORM_RECIPIENT_EMAIL'] = Configuration::get(self::CONFIG_RECIPIENT_EMAIL, $oldRecipient);
         $helper->fields_value['PRODUCTQUOTEFORM_RECIPIENT_EMAILS'] = Configuration::get(self::CONFIG_RECIPIENT_EMAILS, '');
+        $helper->fields_value['PRODUCTQUOTEFORM_GDPR_ENABLED'] = (bool) Configuration::get(self::CONFIG_GDPR_ENABLED, true);
+        $helper->fields_value['PRODUCTQUOTEFORM_PRIVACY_URL'] = (string) Configuration::get(self::CONFIG_PRIVACY_URL, '');
         
         return $helper->generateForm([$fieldsForm]);
     }
@@ -147,6 +186,8 @@ class ProductQuoteForm extends Module
         Configuration::updateValue(self::CONFIG_AUTO_INJECT, true);
         Configuration::updateValue(self::CONFIG_RECIPIENT_EMAIL, '');
         Configuration::updateValue(self::CONFIG_RECIPIENT_EMAILS, '');
+        Configuration::updateValue(self::CONFIG_GDPR_ENABLED, true);
+        Configuration::updateValue(self::CONFIG_PRIVACY_URL, '');
 
         // Migrate old configuration keys if present
         $migratedAutoInject = Configuration::get('AMC_QUOTE_AUTO_INJECT', null);
@@ -173,6 +214,8 @@ class ProductQuoteForm extends Module
         Configuration::deleteByName(self::CONFIG_AUTO_INJECT);
         Configuration::deleteByName(self::CONFIG_RECIPIENT_EMAIL);
         Configuration::deleteByName(self::CONFIG_RECIPIENT_EMAILS);
+        Configuration::deleteByName(self::CONFIG_GDPR_ENABLED);
+        Configuration::deleteByName(self::CONFIG_PRIVACY_URL);
         
         return parent::uninstall()
             && $this->dropQuoteTable();
@@ -307,11 +350,16 @@ class ProductQuoteForm extends Module
 
     private function assignTemplateVarsForProduct($product)
     {
+        $privacyUrl = (string) Configuration::get(self::CONFIG_PRIVACY_URL, '');
+        $gdprEnabled = (bool) Configuration::get(self::CONFIG_GDPR_ENABLED, true);
+
         $this->context->smarty->assign([
             'product_id' => $this->extractProductId($product),
             'product_name' => $this->extractProductName($product),
             'ajax_url' => $this->context->link->getModuleLink($this->name, 'ajax'),
             'amc_quote_token' => Tools::getToken(false),
+            'show_gdpr_checkbox' => (bool) $gdprEnabled,
+            'privacy_url' => $privacyUrl,
         ]);
     }
 

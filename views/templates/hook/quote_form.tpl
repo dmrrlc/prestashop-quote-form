@@ -89,22 +89,29 @@
                       placeholder="Informations complémentaires..."></textarea>
         </div>
 
-        <div class="form-group form-gdpr">
-            {* Use a theme-agnostic checkbox markup to avoid "custom-control" CSS issues in some themes *}
-            <div class="form-check">
-                <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="quote_gdpr"
-                    name="gdpr_consent"
-                    required>
-                <label class="form-check-label" for="quote_gdpr">
-                    J'accepte que mes données soient utilisées pour me recontacter
-                    (<a href="{$urls.pages.privacy}" target="_blank" rel="noopener noreferrer">politique de confidentialité</a>)
-                    <span class="required">*</span>
-                </label>
+        {if isset($show_gdpr_checkbox) && $show_gdpr_checkbox}
+            <div class="form-group form-gdpr">
+                {* Use a theme-agnostic checkbox markup to avoid "custom-control" CSS issues in some themes *}
+                <div class="form-check">
+                    <input
+                        class="form-check-input"
+                        type="checkbox"
+                        id="quote_gdpr"
+                        name="gdpr_consent"
+                        required>
+                    <label class="form-check-label" for="quote_gdpr">
+                        J'accepte que mes données soient utilisées pour me recontacter
+                        ({assign var=policyUrl value=$privacy_url|default:''}
+                        {if $policyUrl != ''}
+                            <a href="{$policyUrl|escape:'htmlall':'UTF-8'}" target="_blank" rel="noopener noreferrer">politique de confidentialité</a>
+                        {else}
+                            <a href="{$urls.pages.privacy}" target="_blank" rel="noopener noreferrer">politique de confidentialité</a>
+                        {/if})
+                        <span class="required">*</span>
+                    </label>
+                </div>
             </div>
-        </div>
+        {/if}
 
         <button type="submit" class="btn btn-primary btn-quote-submit">
             <i class="material-icons">send</i>
