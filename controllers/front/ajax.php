@@ -4,6 +4,79 @@
 // so that PrestaShop can route /module/productquoteform/ajax correctly.
 class ProductquoteformAjaxModuleFrontController extends ModuleFrontController
 {
+    private function parseRecipientEmails(string $raw): array
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return [];
+        }
+
+        $parts = preg_split('/[,\n;\r\t ]+/', $raw) ?: [];
+        $emails = [];
+        foreach ($parts as $email) {
+            $email = trim((string) $email);
+            if ($email === '') {
+                continue;
+            }
+            if (!Validate::isEmail($email)) {
+                continue;
+            }
+            $emails[] = $email;
+        }
+        return array_values(array_unique($emails));
+    }
+
+    private function getNotificationRecipients(): array
+    {
+        // Prefer multiple-recipient list if configured
+        $list = (string) Configuration::get('PRODUCTQUOTEFORM_RECIPIENT_EMAILS', '');
+        $emails = $this->parseRecipientEmails($list);
+        if (!empty($emails)) {
+            return $emails;
+        }
+
+        // Backward compatibility: single recipient
+        $single = (string) Configuration::get('PRODUCTQUOTEFORM_RECIPIENT_EMAIL', '');
+        if (!$single) {
+            $single = (string) Configuration::get('AMC_QUOTE_RECIPIENT_EMAIL', '');
+        }
+        if ($single && Validate::isEmail($single)) {
+            return [$single];
+        }
+
+        // Fallback to shop email
+        $shop = (string) Configuration::get('PS_SHOP_EMAIL');
+        if ($shop && Validate::isEmail($shop)) {
+            return [$shop];
+        }
+
+        return [];
+    }
+
+    private function chooseMailLangId(string $template, int $preferredLangId): int
+    {
+        // Prefer shop/context language, fallback to English templates, then shop default language.
+        $base = $this->module->getLocalPath() . 'mails/';
+
+        $preferredIso = class_exists('Language') ? (string) Language::getIsoById($preferredLangId) : '';
+        if ($preferredIso !== '' && file_exists($base . $preferredIso . '/' . $template . '.html') && file_exists($base . $preferredIso . '/' . $template . '.txt')) {
+            return $preferredLangId;
+        }
+
+        if (class_exists('Language') && method_exists('Language', 'getIdByIso')) {
+            $enId = (int) Language::getIdByIso('en');
+            if ($enId > 0) {
+                $enIso = (string) Language::getIsoById($enId);
+                if ($enIso !== '' && file_exists($base . $enIso . '/' . $template . '.html') && file_exists($base . $enIso . '/' . $template . '.txt')) {
+                    return $enId;
+                }
+            }
+        }
+
+        $defaultId = (int) Configuration::get('PS_LANG_DEFAULT');
+        return $defaultId > 0 ? $defaultId : $preferredLangId;
+    }
+
     public function initContent()
     {
         try {
@@ -151,14 +224,9 @@ class ProductquoteformAjaxModuleFrontController extends ModuleFrontController
         $productLink = $this->context->link->getProductLink((int) $data['product_id']);
         $subject = 'Nouvelle demande de devis - ' . (string) $data['product_name'];
 
-        // Email destinataire (config module) sinon email boutique
-        $to = (string) Configuration::get('PRODUCTQUOTEFORM_RECIPIENT_EMAIL', '');
-        if (!$to) {
-            // backward compatibility
-            $to = (string) Configuration::get('AMC_QUOTE_RECIPIENT_EMAIL', '');
-        }
-        if (!$to) {
-            $to = (string) Configuration::get('PS_SHOP_EMAIL');
+        $recipients = $this->getNotificationRecipients();
+        if (empty($recipients)) {
+            return false;
         }
 
         $templateVars = [
@@ -174,12 +242,13 @@ class ProductquoteformAjaxModuleFrontController extends ModuleFrontController
         ];
 
         // Use PrestaShop mail templates shipped with this module (avoids invalid Mail::Send() usage)
+        $idLang = $this->chooseMailLangId('quote_request', (int) $this->context->language->id);
         return (bool) Mail::Send(
-            (int) $this->context->language->id,
+            $idLang,
             'quote_request',
             $subject,
             $templateVars,
-            $to,
+            $recipients,
             null,
             null,
             null,
@@ -199,8 +268,9 @@ class ProductquoteformAjaxModuleFrontController extends ModuleFrontController
             '{product_name}' => (string) $product_name,
         ];
 
+        $idLang = $this->chooseMailLangId('quote_customer_confirmation', (int) $this->context->language->id);
         return (bool) Mail::Send(
-            (int) $this->context->language->id,
+            $idLang,
             'quote_customer_confirmation',
             $subject,
             $templateVars,

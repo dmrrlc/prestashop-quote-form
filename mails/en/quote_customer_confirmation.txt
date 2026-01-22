@@ -1,9 +1,11 @@
 Hello {prenom},
 
-We received your quote request for:
+Thank you for your quote request.
+
+We have received your request regarding:
 {product_name}
 
-We will get back to you as soon as possible.
+Our team will get back to you as soon as possible with a tailored offer.
 
 Best regards,
 The team

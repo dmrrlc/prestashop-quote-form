@@ -7,6 +7,7 @@ class ProductQuoteForm extends Module
 {
     private const CONFIG_AUTO_INJECT = 'PRODUCTQUOTEFORM_AUTO_INJECT';
     private const CONFIG_RECIPIENT_EMAIL = 'PRODUCTQUOTEFORM_RECIPIENT_EMAIL';
+    private const CONFIG_RECIPIENT_EMAILS = 'PRODUCTQUOTEFORM_RECIPIENT_EMAILS';
 
     private function tableExists(string $tableName): bool
     {
@@ -47,6 +48,13 @@ class ProductQuoteForm extends Module
         if (Tools::isSubmit('submit' . $this->name)) {
             $autoInject = (bool)Tools::getValue('PRODUCTQUOTEFORM_AUTO_INJECT');
             $recipientEmail = trim((string) Tools::getValue('PRODUCTQUOTEFORM_RECIPIENT_EMAIL'));
+            $recipientEmailsRaw = trim((string) Tools::getValue('PRODUCTQUOTEFORM_RECIPIENT_EMAILS'));
+
+            $recipientEmails = $this->parseRecipientEmails($recipientEmailsRaw);
+            if ($recipientEmailsRaw !== '' && empty($recipientEmails)) {
+                $output .= $this->displayError($this->l('Liste d\'emails destinataires invalide. Utilisez des emails séparés par des virgules.'));
+                return $output . $this->displayForm();
+            }
 
             if ($recipientEmail !== '' && !Validate::isEmail($recipientEmail)) {
                 $output .= $this->displayError($this->l('Adresse email destinataire invalide.'));
@@ -54,6 +62,7 @@ class ProductQuoteForm extends Module
                 Configuration::updateValue(self::CONFIG_AUTO_INJECT, $autoInject);
                 // vide = fallback sur l'email boutique
                 Configuration::updateValue(self::CONFIG_RECIPIENT_EMAIL, $recipientEmail);
+                Configuration::updateValue(self::CONFIG_RECIPIENT_EMAILS, implode(',', $recipientEmails));
                 $output .= $this->displayConfirmation($this->l('Paramètres sauvegardés'));
             }
             
@@ -97,6 +106,15 @@ class ProductQuoteForm extends Module
                         'desc' => $this->l('Adresse qui reçoit les demandes de devis (laisser vide pour utiliser l\'email de la boutique).'),
                         'required' => false,
                     ],
+                    [
+                        'type' => 'textarea',
+                        'label' => $this->l('Recipient emails (multiple)'),
+                        'name' => 'PRODUCTQUOTEFORM_RECIPIENT_EMAILS',
+                        'desc' => $this->l('Optionnel. Liste d\'emails destinataires (séparés par des virgules ou des points-virgules). Si renseigné, cette liste est utilisée en priorité.'),
+                        'required' => false,
+                        'rows' => 3,
+                        'cols' => 60,
+                    ],
                 ],
                 'submit' => [
                     'title' => $this->l('Enregistrer'),
@@ -119,6 +137,7 @@ class ProductQuoteForm extends Module
 
         $helper->fields_value['PRODUCTQUOTEFORM_AUTO_INJECT'] = Configuration::get(self::CONFIG_AUTO_INJECT, $oldAutoInject);
         $helper->fields_value['PRODUCTQUOTEFORM_RECIPIENT_EMAIL'] = Configuration::get(self::CONFIG_RECIPIENT_EMAIL, $oldRecipient);
+        $helper->fields_value['PRODUCTQUOTEFORM_RECIPIENT_EMAILS'] = Configuration::get(self::CONFIG_RECIPIENT_EMAILS, '');
         
         return $helper->generateForm([$fieldsForm]);
     }
@@ -127,6 +146,7 @@ class ProductQuoteForm extends Module
     {
         Configuration::updateValue(self::CONFIG_AUTO_INJECT, true);
         Configuration::updateValue(self::CONFIG_RECIPIENT_EMAIL, '');
+        Configuration::updateValue(self::CONFIG_RECIPIENT_EMAILS, '');
 
         // Migrate old configuration keys if present
         $migratedAutoInject = Configuration::get('AMC_QUOTE_AUTO_INJECT', null);
@@ -137,6 +157,7 @@ class ProductQuoteForm extends Module
         if ($migratedRecipient !== null) {
             Configuration::updateValue(self::CONFIG_RECIPIENT_EMAIL, (string) $migratedRecipient);
         }
+        // Prefer list config if present in future upgrades (keep empty by default)
         
         return parent::install()
             && $this->registerHook('displayFooterProduct')
@@ -151,9 +172,36 @@ class ProductQuoteForm extends Module
     {
         Configuration::deleteByName(self::CONFIG_AUTO_INJECT);
         Configuration::deleteByName(self::CONFIG_RECIPIENT_EMAIL);
+        Configuration::deleteByName(self::CONFIG_RECIPIENT_EMAILS);
         
         return parent::uninstall()
             && $this->dropQuoteTable();
+    }
+
+    private function parseRecipientEmails(string $raw): array
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return [];
+        }
+
+        // split on commas/semicolons/whitespace/newlines
+        $parts = preg_split('/[,\n;\r\t ]+/', $raw) ?: [];
+        $emails = [];
+        foreach ($parts as $email) {
+            $email = trim((string) $email);
+            if ($email === '') {
+                continue;
+            }
+            if (!Validate::isEmail($email)) {
+                return [];
+            }
+            $emails[] = $email;
+        }
+
+        // de-duplicate
+        $emails = array_values(array_unique($emails));
+        return $emails;
     }
 
     private function createQuoteTable()

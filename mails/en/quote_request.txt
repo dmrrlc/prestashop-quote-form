@@ -1,15 +1,18 @@
-New quote request for:
+Hello,
+
+New quote request for the product:
 {product_name}
 
-Product link: {product_link}
+Product link:
+{product_link}
 
---- Contact ---
+--- Customer details ---
 First name: {prenom}
 Last name: {nom}
 Company: {entreprise}
 Email: {email}
 Phone: {telephone}
-Quantity: {quantite}
+Requested quantity: {quantite}
 
 --- Message ---
 {message}
